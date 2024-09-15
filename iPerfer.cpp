@@ -64,19 +64,19 @@ int main(int argc, char* argv[]) {
             std::cerr << "Usage: ./iPerfer -s -p <port>\n";
             return 1;
         }
-        if ((port < 1024) || (port > 65535)) {
-            std::cerr << "Error: port number must be in the range of [1024, 65535]\n";
+        if (port < 1024 || port > 65535) {
+            printf("Error: port number must be in the range of [1024, 65535]\n");
             return 1;
         }
         std::cout << "Running in server mode on port " << port << "\n";
         // Initialize and run server
-        Server server(port); 
+        Server server(port, 1); 
         return server.run_server();
 
     } else if (client_mode) {
         // Client mode checks
-        if (argc != 8) {
-            std::cerr << "Error: missing or extra arguments\n";
+        if (argc != 7 || strcmp(argv[1], "-c") != 0 || strcmp(argv[3], "-p") != 0 || strcmp(argv[5], "-t") != 0) {
+            printf("Error: missing or extra arguments\n");
             return 1;
         }
         if (hostname == nullptr || port == -1 || time == -1) {
@@ -84,19 +84,21 @@ int main(int argc, char* argv[]) {
             std::cerr << "Usage: ./iPerfer -c -h <hostname> -p <port> -t <time>\n";
             return 1;
         }
-        if ((port < 1024) || (port > 65535)) {
-            std::cerr << "Error: port number must be in the range of [1024, 65535]\n";
+        if (port < 1024 || port > 65535) {
+            printf("Error: port number must be in the range of [1024, 65535]\n");
             return 1;
         }
         if (time <= 0) {
-            std::cerr << "Error: Time must be greater than 0.\n";
+            printf("Error: time argument must be greater than 0\n");
             return 1;
         }
         std::cout << "Running in client mode\n";
         std::cout << "Server hostname: " << hostname << "\n";
         std::cout << "Server port: " << port << "\n";
         std::cout << "Time: " << time << " seconds\n";
-        // Initialize and run client (Client client(hostname, port); client.send_data(time);)
+        // Initialize and run client 
+        Client client(hostname, port, time);
+        return client.send_data();
 
     } else {
         std::cerr << "Error: You must specify either server or client mode.\n";

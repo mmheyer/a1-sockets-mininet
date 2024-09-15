@@ -1,86 +1,86 @@
 #include "Client.h"
-#include "helpers.h"  // For make_client_sockaddr()
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <iostream>
-#include <cstring>
+#include "helpers.h"
+#include <sys/socket.h>  // socket(), connect(), send(), recv(), shutdown()
+#include <unistd.h>      // close()
+#include <stdio.h>       // printf(), perror()
+#include <chrono>        // for time measurement
+#include <cstring>       // memset()
 
-static const int MAX_MESSAGE_SIZE = 256;
+// Constant size for data chunks
+static const int CHUNK_SIZE = 1000;
+static const char FIN_MESSAGE[] = "FIN";
+static const char ACK_MESSAGE[] = "ACK";
 
-Client::Client(const std::string &hostname, int port)
-    : hostname(hostname), port(port) {}
+// Constructor for the Client class
+Client::Client(const std::string& hostname, int port, int duration)
+    : hostname(hostname), port(port), duration(duration) {}
 
-// This function creates a socket and connects to the server
-int Client::connect_to_server() {
+// Function to send data to the server
+int Client::send_data() {
+    // (1) Create socket
     int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0) {
-        std::cerr << "Error: Unable to create socket\n";
+    if (sock == -1) {
+        perror("Error: failed to create socket");
         return -1;
     }
 
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
+    // (2) Make sockaddr for the client connection
+    struct sockaddr_in server_addr;
+    if (make_client_sockaddr(&server_addr, hostname.c_str(), port) == -1) {
+        printf("Error: Unable to make server sockaddr\n");
+        return -1;
+    }
 
-    struct hostent *host_entry = gethostbyname(hostname.c_str());
-    if (!host_entry) {
-        std::cerr << "Error: Unknown host " << hostname << "\n";
+    // (3) Connect to the server
+    if (connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
+        perror("Error: failed to connect to the server");
         close(sock);
         return -1;
     }
 
-    memcpy(&addr.sin_addr, host_entry->h_addr, host_entry->h_length);
+    // (4) Start sending data
+    char data[CHUNK_SIZE] = {};  // All zeroes
+    int total_bytes_sent = 0;
 
-    if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        std::cerr << "Error: Unable to connect to " << hostname << ":" << port << "\n";
+    // Record the start time
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Send data for the specified duration
+    auto end_time = std::chrono::high_resolution_clock::now() + std::chrono::seconds(duration);
+    while (std::chrono::high_resolution_clock::now() < end_time) {
+        // Send 1000-byte chunks as fast as possible
+        int bytes_sent = send(sock, data, CHUNK_SIZE, 0);
+        if (bytes_sent == -1) {
+            perror("Error: failed to send data");
+            close(sock);
+            return -1;
+        }
+        total_bytes_sent += bytes_sent;
+    }
+
+    // (5) Send the FIN message and shutdown transmission
+    send(sock, FIN_MESSAGE, strlen(FIN_MESSAGE), 0);
+    shutdown(sock, SHUT_WR);  // Stop sending data
+
+    // (6) Await acknowledgment from the server
+    char buffer[256] = {};
+    if (recv(sock, buffer, sizeof(buffer), 0) <= 0 || strcmp(buffer, ACK_MESSAGE) != 0) {
+        printf("Error: failed to receive acknowledgment from server\n");
         close(sock);
         return -1;
     }
 
-    return sock;
-}
+    // (7) Calculate the elapsed time
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
 
-// Sends the message to the server and waits for a response
-int Client::send_message(const std::string &message) {
-    if (message.length() > MAX_MESSAGE_SIZE) {
-        std::cerr << "Error: Message exceeds maximum length\n";
-        return -1;
-    }
+    // (8) Print summary in the format: Sent=X KB, Rate=Y Mbps
+    int kb_sent = total_bytes_sent / 1000;
+    double rate_mbps = (total_bytes_sent * 8) / (1000000.0 * elapsed.count());
 
-    int sock = connect_to_server();
-    if (sock == -1) return -1;
+    printf("Sent=%d KB, Rate=%.3f Mbps\n", kb_sent, rate_mbps);
 
-    // Send the message to the server
-    if (send(sock, message.c_str(), message.length(), 0) == -1) {
-        std::cerr << "Error: Unable to send message\n";
-        close(sock);
-        return -1;
-    }
-    std::cout << "Message sent\n";
-    shutdown(sock, SHUT_WR);
-
-    // Wait for the server's integer response
-    char buffer[MAX_MESSAGE_SIZE] = {};
-    int total_bytes = 0;
-    while (true) {
-        int bytes_received = recv(sock, buffer + total_bytes, MAX_MESSAGE_SIZE - total_bytes, 0);
-        if (bytes_received <= 0) break;
-        total_bytes += bytes_received;
-    }
-
-    // Convert the response to an integer
-    int response = atoi(buffer);
-    if (response == 0) {
-        std::cerr << "Error: Invalid response from server\n";
-        close(sock);
-        return -1;
-    }
-
-    std::cout << "Server response: " << response << "\n";
-
-    // Close the connection
+    // (9) Close the socket
     close(sock);
-    return response;
+    return 0;
 }
