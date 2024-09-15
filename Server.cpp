@@ -1,128 +1,109 @@
 #include "Server.h"
-#include "helpers.h"
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include <arpa/inet.h>    // htons()
+#include <cstdio>         // printf()
+#include <cstdlib>        // atoi()
+#include <cstring>        // strlen()
+#include <sys/socket.h>   // socket(), bind(), listen(), accept(), recv(), send()
+#include <unistd.h>       // close()
+#include <ctime>          // clock()
+#include "helpers.h"      // make_server_sockaddr()
 
 static const int MAX_MESSAGE_SIZE = 256;
-static const char *RESPONSE_OK = "200";
-static const char *RESPONSE_ERROR = "400";
+static const int DATA_CHUNK_SIZE = 1000;  // 1000 bytes per chunk
+static const char *RESPONSE_ACK = "ACK";
 
-Server::Server(int port, int queue_size)
-    : port(port), queue_size(queue_size), sockfd(-1) {}
+int Server::handle_connection(int connectionfd) {
+    char buffer[DATA_CHUNK_SIZE] = {};
+    int total_bytes_received = 0;
+    clock_t start_time = clock();
+    int bytes_received;
 
-int Server::setup_server_socket() {
-    // (1) Create the socket
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
+    // (1) Receive data in chunks of 1000 bytes
+    while ((bytes_received = recv(connectionfd, buffer, DATA_CHUNK_SIZE, 0)) > 0) {
+        total_bytes_received += bytes_received;
+        printf("Received %d bytes\n", bytes_received);
+    }
+
+    // (2) Handle connection closure (FIN message)
+    if (bytes_received == 0) {
+        printf("Connection closed by client\n");
+    } else if (bytes_received < 0) {
+        perror("Error receiving data");
+        close(connectionfd);
+        return -1;
+    }
+
+    // (3) Send acknowledgment to client
+    if (send(connectionfd, RESPONSE_ACK, strlen(RESPONSE_ACK), 0) == -1) {
+        perror("Error sending acknowledgment");
+        close(connectionfd);
+        return -1;
+    }
+
+    // (4) Calculate the time taken and the transfer rate
+    clock_t end_time = clock();
+    double time_elapsed = double(end_time - start_time) / CLOCKS_PER_SEC;
+    double rate_mbps = (total_bytes_received * 8.0) / (time_elapsed * 1000000.0); // bits per second to Mbps
+    int total_kb = total_bytes_received / 1000;
+
+    // (5) Print the summary
+    printf("Received=%d KB, Rate=%.3f Mbps\n", total_kb, rate_mbps);
+
+    // (6) Close the connection
+    close(connectionfd);
+    return 0;
+}
+
+int Server::run_server() {
+    // (1) Create a socket
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock == -1) {
         perror("Error creating socket");
         return -1;
     }
 
     // (2) Set the "reuse port" option
     int yes = 1;
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
         perror("Error setting socket options");
-        close(sockfd);
+        close(sock);
         return -1;
     }
 
-    // (3) Set up the server address using helper function
-    struct sockaddr_in addr;
-    if (make_server_sockaddr(&addr, port) == -1) {
-        close(sockfd);
+    // (3) Bind the socket to the port
+    struct sockaddr_in server_addr;
+    if (make_server_sockaddr(&server_addr, listen_port) == -1) {
+        printf("Error: port number must be in the range of [1024, 65535]\n");
+        close(sock);
         return -1;
     }
-
-    // (4) Bind the socket to the address
-    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    if (bind(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
         perror("Error binding socket");
-        close(sockfd);
+        close(sock);
         return -1;
     }
 
-    // (5) Start listening on the socket
-    if (listen(sockfd, queue_size) == -1) {
+    // (4) Listen for incoming connections
+    if (listen(sock, queue_size) == -1) {
         perror("Error listening on socket");
-        close(sockfd);
+        close(sock);
         return -1;
     }
+    printf("Listening on port %d...\n", listen_port);
 
-    printf("Server is listening on port %d...\n", port);
-    return 0;
-}
-
-int Server::handle_connection(int connectionfd) {
-    char buffer[MAX_MESSAGE_SIZE] = {};
-    int loc = 0;
-    bool response_ok = true;
-
-    // (1) Receive the message from the client
-    while (true) {
-        int received = recv(connectionfd, buffer + loc, MAX_MESSAGE_SIZE - loc, 0);
-        if (received == -1) {
-            perror("Error receiving message");
-            response_ok = false;
-            break;
-        }
-        loc += received;
-        if (received == 0) {
-            break;
-        }
-        if (loc > MAX_MESSAGE_SIZE) {
-            response_ok = false;
-            break;
-        }
-    }
-
-    // (2) Print the received message
-    if (response_ok) {
-        printf("Received: %s\n", buffer);
-    }
-
-    // (3) Send a response to the client
-    const char *response = response_ok ? RESPONSE_OK : RESPONSE_ERROR;
-    if (send(connectionfd, response, strlen(response), 0) == -1) {
-        perror("Error sending response");
+    // (5) Accept and handle a single connection
+    int connectionfd = accept(sock, NULL, NULL);
+    if (connectionfd == -1) {
+        perror("Error accepting connection");
+        close(sock);
         return -1;
     }
+    printf("Connection accepted\n");
 
-    // (4) Close the connection
-    close(connectionfd);
-    return 0;
-}
+    // (6) Handle the connection
+    handle_connection(connectionfd);
 
-int Server::run_server() {
-    // (1) Setup server socket
-    if (setup_server_socket() == -1) {
-        return -1;
-    }
-
-    // (2) Serve incoming connections
-    while (true) {
-        // Accept a connection
-        int connectionfd = accept(sockfd, nullptr, nullptr);
-        if (connectionfd == -1) {
-            perror("Error accepting connection");
-            close(sockfd);
-            return -1;
-        }
-
-        // Handle the connection
-        printf("Accepted a connection...\n");
-        if (handle_connection(connectionfd) == -1) {
-            close(sockfd);
-            return -1;
-        }
-
-        printf("Connection handled successfully.\n");
-    }
-
-    // Close the server socket
-    close(sockfd);
+    // (7) Close the server socket
+    close(sock);
     return 0;
 }

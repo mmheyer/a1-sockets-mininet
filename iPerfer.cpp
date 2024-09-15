@@ -55,8 +55,8 @@ int main(int argc, char* argv[]) {
 
     if (server_mode) {
         // Server mode checks
-        if (argc != 4) {
-            std::cerr << "Error: missing or extra arguments\n";
+        if (argc != 4 || strcmp(argv[1], "-s") != 0 || strcmp(argv[2], "-p") != 0) {
+            printf("Error: missing or extra arguments\n");
             return 1;
         }
         if (port == -1) {
@@ -69,7 +69,9 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         std::cout << "Running in server mode on port " << port << "\n";
-        // Initialize and run server (Server server(port); server.run_server();)
+        // Initialize and run server
+        Server server(port); 
+        return server.run_server();
 
     } else if (client_mode) {
         // Client mode checks
