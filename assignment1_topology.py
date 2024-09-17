@@ -67,9 +67,8 @@ def measure_latency_and_throughput(net):
         h_src, h_dst = net.get(hosts[0]), net.get(hosts[1])
 
         # Measure latency using ping (20 packets)
-        # NOTE: uncomment once finished testing throughput
-        # print(f"Measuring latency on {link}...")
-        # h_src.cmd(f'ping -c 20 {h_dst.IP()} > latency_{link}.txt')
+        print(f"Measuring latency on {link}...")
+        h_src.cmd(f'ping -c 20 {h_dst.IP()} > latency_{link}.txt')
 
         # Measure throughput using iPerfer
         print(f"Measuring throughput on {link}...")
@@ -100,7 +99,7 @@ if __name__ == '__main__':
     # Start the network
     net.start()
 
-    # Perform the latency and throughput measurements
+    # Q1: Perform the latency and throughput measurements
     measure_latency_and_throughput(net)
 
     # Drop to CLI for manual testing if needed
