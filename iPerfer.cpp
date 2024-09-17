@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
 
     // Parse command line options
     int opt;
-    while ((opt = getopt(argc, argv, "s:p:h:t:")) != -1) {
+    while ((opt = getopt(argc, argv, "scp:h:t:")) != -1) {
         switch (opt) {
             case 's':  // Server mode flag
                 server_mode = true;
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
     if (server_mode) {
         // Server mode checks
         if (argc != 4 || strcmp(argv[1], "-s") != 0 || strcmp(argv[2], "-p") != 0) {
-            printf("Error: missing or extra arguments\n");
+            std::cerr << "Error: missing or extra arguments\n";
             return 1;
         }
         if (port == -1) {
@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         if (port < 1024 || port > 65535) {
-            printf("Error: port number must be in the range of [1024, 65535]\n");
+            std::cerr << "Error: port number must be in the range of [1024, 65535]\n";
             return 1;
         }
         std::cout << "Running in server mode on port " << port << "\n";
@@ -74,9 +74,10 @@ int main(int argc, char* argv[]) {
         return server.run_server();
 
     } else if (client_mode) {
+        std::cout << "Starting client mode.\n";
         // Client mode checks
-        if (argc != 7 || strcmp(argv[1], "-c") != 0 || strcmp(argv[3], "-p") != 0 || strcmp(argv[5], "-t") != 0) {
-            printf("Error: missing or extra arguments\n");
+        if (argc != 8 || strcmp(argv[1], "-c") != 0 || strcmp(argv[2], "-h") != 0 || strcmp(argv[4], "-p") != 0 || strcmp(argv[6], "-t") != 0) {
+            std::cerr << "Error: missing or extra arguments\n";
             return 1;
         }
         if (hostname == nullptr || port == -1 || time == -1) {
@@ -85,11 +86,11 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         if (port < 1024 || port > 65535) {
-            printf("Error: port number must be in the range of [1024, 65535]\n");
+            std::cerr << "Error: port number must be in the range of [1024, 65535]\n";
             return 1;
         }
         if (time <= 0) {
-            printf("Error: time argument must be greater than 0\n");
+            std::cerr << "Error: time argument must be greater than 0\n";
             return 1;
         }
         std::cout << "Running in client mode\n";

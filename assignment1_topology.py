@@ -67,8 +67,9 @@ def measure_latency_and_throughput(net):
         h_src, h_dst = net.get(hosts[0]), net.get(hosts[1])
 
         # Measure latency using ping (20 packets)
-        print(f"Measuring latency on {link}...")
-        h_src.cmd(f'ping -c 20 {h_dst.IP()} > latency_{link}.txt')
+        # NOTE: uncomment once finished testing throughput
+        # print(f"Measuring latency on {link}...")
+        # h_src.cmd(f'ping -c 20 {h_dst.IP()} > latency_{link}.txt')
 
         # Measure throughput using iPerfer
         print(f"Measuring throughput on {link}...")
@@ -77,8 +78,13 @@ def measure_latency_and_throughput(net):
         h_dst.cmd(f'./iPerfer -s -p 5001 &')
         sleep(1)  # Wait for the server to start
 
+        # print("Successfully started server!")
+        # h_src.cmd(f'ping -c 5 {h_dst.IP()} > latency.txt')
+        # print(f'h_dst.IP()={h_dst.IP()}')
+        # print(f'link={link}')
+
         # Start iPerfer client on source host for 20 seconds
-        h_src.cmd(f'./iPerfer -c -h {h_dst.IP()} -p 5001 -t 20 > throughput_{link}.txt')
+        h_src.cmd(f'stdbuf -oL ./iPerfer -c -h {h_dst.IP()} -p 5001 -t 20 > throughput_{link}.txt 2>&1')
 
         # Stop the iPerfer server on destination host
         h_dst.cmd('kill %iperf')
