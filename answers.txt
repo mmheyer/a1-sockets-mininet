@@ -1,4 +1,4 @@
-2)    Predicted throughput:
+2)    Predicted throughput: 
       Predicted latency:
       Actual throughput:
       Actual latency:

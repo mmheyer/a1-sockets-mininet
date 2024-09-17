@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
         return server.run_server();
 
     } else if (client_mode) {
-        std::cout << "Starting client mode.\n";
+        // std::cout << "Starting client mode.\n";
         // Client mode checks
         if (argc != 8 || strcmp(argv[1], "-c") != 0 || strcmp(argv[2], "-h") != 0 || strcmp(argv[4], "-p") != 0 || strcmp(argv[6], "-t") != 0) {
             std::cerr << "Error: missing or extra arguments\n";
@@ -93,10 +93,10 @@ int main(int argc, char* argv[]) {
             std::cerr << "Error: time argument must be greater than 0\n";
             return 1;
         }
-        std::cout << "Running in client mode\n";
-        std::cout << "Server hostname: " << hostname << "\n";
-        std::cout << "Server port: " << port << "\n";
-        std::cout << "Time: " << time << " seconds\n";
+        // std::cout << "Running in client mode\n";
+        // std::cout << "Server hostname: " << hostname << "\n";
+        // std::cout << "Server port: " << port << "\n";
+        // std::cout << "Time: " << time << " seconds\n";
         // Initialize and run client 
         Client client(hostname, port, time);
         return client.send_data();
