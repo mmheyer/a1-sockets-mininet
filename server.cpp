@@ -1,4 +1,5 @@
-#include "Server.h"
+#include "server.h"
+#include "helpers.h"
 #include <arpa/inet.h>    // htons()
 #include <cstdio>         // printf()
 #include <cstdlib>        // atoi()
@@ -6,7 +7,6 @@
 #include <sys/socket.h>   // socket(), bind(), listen(), accept(), recv(), send()
 #include <unistd.h>       // close()
 #include <ctime>          // clock()
-#include "helpers.h"      // make_server_sockaddr()
 
 static const int MAX_MESSAGE_SIZE = 256;
 static const int DATA_CHUNK_SIZE = 1000;  // 1000 bytes per chunk
@@ -19,7 +19,7 @@ int Server::handle_connection(int connectionfd) {
     int bytes_received;
 
     // (1) Receive data in chunks of 1000 bytes
-    while ((bytes_received = recv(connectionfd, buffer, DATA_CHUNK_SIZE, 0)) > 0) {
+    while ((bytes_received = static_cast<int>(recv(connectionfd, buffer, DATA_CHUNK_SIZE, 0))) > 0) {
         total_bytes_received += bytes_received;
         printf("Received %d bytes\n", bytes_received);
     }

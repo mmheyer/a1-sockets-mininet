@@ -1,4 +1,4 @@
-#include "Client.h"
+#include "client.h"
 #include "helpers.h"
 #include <sys/socket.h>  // socket(), connect(), send(), recv(), shutdown()
 #include <unistd.h>      // close()
@@ -49,7 +49,7 @@ int Client::send_data() {
     auto end_time = std::chrono::high_resolution_clock::now() + std::chrono::seconds(duration);
     while (std::chrono::high_resolution_clock::now() < end_time) {
         // Send 1000-byte chunks as fast as possible
-        int bytes_sent = send(sock, data, CHUNK_SIZE, 0);
+        int bytes_sent = static_cast<int>(send(sock, data, CHUNK_SIZE, 0));
         if (bytes_sent == -1) {
             perror("Error: failed to send data");
             close(sock);

@@ -30,7 +30,7 @@
  *		struct sockaddr_in server;
  *		int err = make_server_sockaddr(&server, 8888);
  */
-int make_server_sockaddr(struct sockaddr_in *addr, int port) {
+inline int make_server_sockaddr(struct sockaddr_in *addr, int port) {
 	// Step (1): specify socket family.
 	// This is an internet socket.
 	addr->sin_family = AF_INET;
@@ -43,7 +43,7 @@ int make_server_sockaddr(struct sockaddr_in *addr, int port) {
 	// Step (3): Set the port value.
 	// If port is 0, the OS will choose the port for us.
 	// Use ntohs to convert from local byte order to network byte order.
-	addr->sin_port = ntohs(port);
+	addr->sin_port = ntohs((uint16_t)port);
 
 	return 0;
 }
@@ -60,7 +60,7 @@ int make_server_sockaddr(struct sockaddr_in *addr, int port) {
  *		struct sockaddr_in client;
  *		int err = make_client_sockaddr(&client, "141.88.27.42", 8888);
  */
-int make_client_sockaddr(struct sockaddr_in *addr, const char *hostname, int port) {
+inline int make_client_sockaddr(struct sockaddr_in *addr, const char *hostname, int port) {
 	// Step (1): specify socket family.
 	// This is an internet socket.
 	addr->sin_family = AF_INET;
@@ -77,7 +77,7 @@ int make_client_sockaddr(struct sockaddr_in *addr, const char *hostname, int por
 
 	// Step (3): Set the port value.
 	// Use ntohs to convert from local byte order to network byte order.
-	addr->sin_port = ntohs(port);
+	addr->sin_port = ntohs((uint16_t)port);
 
 	return 0;
 }

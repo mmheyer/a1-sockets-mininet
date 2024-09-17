@@ -9,8 +9,8 @@
 #include <iostream>
 #include <getopt.h>
 
-#include "Server.h"
-#include "Client.h"
+#include "server.h"
+#include "client.h"
 
 using namespace std;
 
