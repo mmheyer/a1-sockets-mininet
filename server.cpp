@@ -21,12 +21,12 @@ int Server::handle_connection(int connectionfd) {
     // (1) Receive data in chunks of 1000 bytes
     while ((bytes_received = static_cast<int>(recv(connectionfd, buffer, DATA_CHUNK_SIZE, 0))) > 0) {
         total_bytes_received += bytes_received;
-        printf("Received %d bytes\n", bytes_received);
+        //printf("Received %d bytes\n", bytes_received);
     }
 
     // (2) Handle connection closure (FIN message)
     if (bytes_received == 0) {
-        printf("Connection closed by client\n");
+        //printf("Connection closed by client\n");
     } else if (bytes_received < 0) {
         perror("Error receiving data");
         close(connectionfd);
@@ -89,7 +89,7 @@ int Server::run_server() {
         close(sock);
         return -1;
     }
-    printf("Listening on port %d...\n", listen_port);
+    //printf("Listening on port %d...\n", listen_port);
 
     // (5) Accept and handle a single connection
     int connectionfd = accept(sock, NULL, NULL);
@@ -98,7 +98,7 @@ int Server::run_server() {
         close(sock);
         return -1;
     }
-    printf("Connection accepted\n");
+    //printf("Connection accepted\n");
 
     // (6) Handle the connection
     handle_connection(connectionfd);
