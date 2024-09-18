@@ -47,7 +47,7 @@ LD_RUN_PATH := /usr/um/gcc-5.1.0/lib64
 
 # TODO
 # Change EXECUTABLE to match the command name given in the project spec.
-EXECUTABLE 	= iPerfer
+EXECUTABLE 	= iperfer
 
 # designate which compiler to use
 CXX			= g++
@@ -68,7 +68,7 @@ OBJECTS		= $(SOURCES:%.cpp=%.o)
 #PROJECTFILE = $(wildcard project*.cpp)
 # TODO
 # If main() is in another file delete the line above, edit and uncomment below
-PROJECTFILE = iPerfer.cpp
+PROJECTFILE = iperfer.cpp
 
 # name of the tar ball created for submission
 PARTIAL_SUBMITFILE = partialsubmit.tar.gz
@@ -211,7 +211,7 @@ help:
 HEADERS = helpers.h
 client.o: client.cpp client.h $(HEADERS)
 server.o: server.cpp server.h $(HEADERS)
-iPerfer.o: iPerfer.cpp client.h server.h
+iperfer.o: iperfer.cpp client.h server.h
 
 ######################
 # TODO (end) #
