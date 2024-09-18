@@ -8,6 +8,7 @@
 #include <unistd.h>       // close()
 #include <ctime>          // clock()
 #include <iostream>
+#include <chrono>        // for time measurement
 
 static const int MAX_MESSAGE_SIZE = 256;
 static const int DATA_CHUNK_SIZE = 1000;  // 1000 bytes per chunk
@@ -16,7 +17,8 @@ static const char *RESPONSE_ACK = "ACK";
 int Server::handle_connection(int connectionfd) {
     char buffer[DATA_CHUNK_SIZE] = {};
     long long total_bytes_received = 0;
-    clock_t start_time = clock();
+    //clock_t start_time = clock();
+    auto start_time = std::chrono::high_resolution_clock::now();
     long long bytes_received;
 
     // (1) Receive data in chunks of 1000 bytes
@@ -44,9 +46,11 @@ int Server::handle_connection(int connectionfd) {
     //std::cout << "[DEBUG] Successfully sent ACK to client.\n";
 
     // (4) Calculate the time taken and the transfer rate
-    clock_t end_time = clock();
-    double time_elapsed = double(end_time - start_time) / CLOCKS_PER_SEC;
-    double rate_mbps = (static_cast<double>(total_bytes_received) * 8.0) / (time_elapsed * 1000000.0); // bits per second to Mbps
+    //clock_t end_time = clock();
+    auto end_time = std::chrono::high_resolution_clock::now();
+    //double time_elapsed = double(end_time - start_time) / CLOCKS_PER_SEC;
+    std::chrono::duration<double> time_elapsed = end_time - start_time;
+    double rate_mbps = (static_cast<double>(total_bytes_received) * 8.0) / (time_elapsed.count() * 1000000.0); // bits per second to Mbps
     long long total_kb = total_bytes_received / 1000;
 
     // (5) Print the summary

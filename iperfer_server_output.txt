@@ -1,3 +1,1 @@
-[DEBUG] Sending ACK to client.
-[DEBUG] Successfully sent ACK to client.
-Received=58731 KB, Rate=1304.246 Mbps
+Received=56159 KB, Rate=18.497 Mbps

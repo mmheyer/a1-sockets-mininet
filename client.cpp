@@ -44,7 +44,7 @@ int Client::send_data() {
 
     // (4) Start sending data
     char data[CHUNK_SIZE] = {};  // All zeroes
-    int total_bytes_sent = 0;
+    long long total_bytes_sent = 0;
 
     // Send data for the specified duration
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -52,7 +52,7 @@ int Client::send_data() {
 
     while (std::chrono::high_resolution_clock::now() < end_time) {
         // Send 1000-byte chunks as fast as possible
-        int bytes_sent = static_cast<int>(send(sock, data, CHUNK_SIZE, 0));
+        long long bytes_sent = static_cast<long long>(send(sock, data, CHUNK_SIZE, 0));
         if (bytes_sent == -1) {
             perror("Error: failed to send data");
             close(sock);
@@ -78,10 +78,10 @@ int Client::send_data() {
     std::chrono::duration<double> elapsed = end - start_time;
 
     // (8) Print summary in the format: Sent=X KB, Rate=Y Mbps
-    int kb_sent = total_bytes_sent / 1000;
-    double rate_mbps = (total_bytes_sent * 8) / (1000000.0 * elapsed.count());
+    long long kb_sent = total_bytes_sent / 1000;
+    double rate_mbps = (static_cast<double>(total_bytes_sent) * 8) / (1000000.0 * elapsed.count());
 
-    printf("Sent=%d KB, Rate=%.3f Mbps\n", kb_sent, rate_mbps);
+    printf("Sent=%lld KB, Rate=%.3f Mbps\n", kb_sent, rate_mbps);
 
     // (9) Close the socket
     close(sock);
