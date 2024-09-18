@@ -7,6 +7,7 @@
 #include <sys/socket.h>   // socket(), bind(), listen(), accept(), recv(), send()
 #include <unistd.h>       // close()
 #include <ctime>          // clock()
+#include <iostream>
 
 static const int MAX_MESSAGE_SIZE = 256;
 static const int DATA_CHUNK_SIZE = 1000;  // 1000 bytes per chunk
@@ -14,12 +15,12 @@ static const char *RESPONSE_ACK = "ACK";
 
 int Server::handle_connection(int connectionfd) {
     char buffer[DATA_CHUNK_SIZE] = {};
-    int total_bytes_received = 0;
+    long long total_bytes_received = 0;
     clock_t start_time = clock();
-    int bytes_received;
+    long long bytes_received;
 
     // (1) Receive data in chunks of 1000 bytes
-    while ((bytes_received = static_cast<int>(recv(connectionfd, buffer, DATA_CHUNK_SIZE, 0))) > 0) {
+    while ((bytes_received = static_cast<long long>(recv(connectionfd, buffer, DATA_CHUNK_SIZE, 0))) > 0) {
         total_bytes_received += bytes_received;
         //printf("Received %d bytes\n", bytes_received);
     }
@@ -43,11 +44,11 @@ int Server::handle_connection(int connectionfd) {
     // (4) Calculate the time taken and the transfer rate
     clock_t end_time = clock();
     double time_elapsed = double(end_time - start_time) / CLOCKS_PER_SEC;
-    double rate_mbps = (total_bytes_received * 8.0) / (time_elapsed * 1000000.0); // bits per second to Mbps
-    int total_kb = total_bytes_received / 1000;
+    double rate_mbps = (static_cast<double>(total_bytes_received) * 8.0) / (time_elapsed * 1000000.0); // bits per second to Mbps
+    long long total_kb = total_bytes_received / 1000;
 
     // (5) Print the summary
-    printf("Received=%d KB, Rate=%.3f Mbps\n", total_kb, rate_mbps);
+    printf("Received=%lld KB, Rate=%.3f Mbps\n", total_kb, rate_mbps);
 
     // (6) Close the connection
     close(connectionfd);

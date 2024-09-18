@@ -70,12 +70,12 @@ def measure_latency_and_throughput(net):
         print(f"Measuring latency on {link}...")
         h_src.cmd(f'ping -c 20 {h_dst.IP()} > latency_{link}.txt')
 
-        # Measure throughput using iPerfer
+        # Measure throughput using iperfer
         print(f"Measuring throughput on {link}...")
         
         # Start iPerfer server on destination host
-        h_dst.cmd(f'./iPerfer -s -p 5001 > throughput_server.txt 2>&1 &')
-        #h_dst.cmd(f'./iPerfer -s -p 5001 &')
+        h_dst.cmd(f'./iperfer -s -p 5001 > throughput_server.txt 2>&1 &')
+        #h_dst.cmd(f'./iperfer -s -p 5001 &')
         sleep(1)  # Wait for the server to start
 
         # print("Successfully started server!")
@@ -83,12 +83,31 @@ def measure_latency_and_throughput(net):
         # print(f'h_dst.IP()={h_dst.IP()}')
         # print(f'link={link}')
 
-        # Start iPerfer client on source host for 20 seconds
-        h_src.cmd(f'stdbuf -oL ./iPerfer -c -h {h_dst.IP()} -p 5001 -t 20 > throughput_{link}.txt 2>&1')
+        # Start iperfer client on source host for 20 seconds
+        h_src.cmd(f'stdbuf -oL ./iperfer -c -h {h_dst.IP()} -p 5001 -t 20 > throughput_{link}.txt 2>&1')
 
-        # Stop the iPerfer server on destination host
+        # Stop the iperfer server on destination host
         h_dst.cmd('kill %iperf')
         sleep(1)  # Short wait between tests
+
+def path_latency_and_throughput(net):
+    h1 = net.get('h1')
+    h10 = net.get('h10')
+
+    # Perform latency test (ping)
+    print("Running ping test between h1 and h10...")
+    h1.cmd('ping -c 20 10.0.0.10 > latency_Q2.txt 2>&1')
+
+    # Start the iPerfer server on h10
+    print("Starting iperfer server on h10...")
+    h10.cmd('stdbuf -oL ./iperfer -s -p 5001 > /dev/null 2>&1 &')
+
+    # Give the server time to start
+    sleep(1)
+
+    # Run the iperfer client on h1 and save the throughput results
+    print("Running iperfer client on h1...")
+    h1.cmd('stdbuf -oL ./iperfer -c -h 10.0.0.10 -p 5001 -t 20 > throughput_Q2.txt 2>&1')
 
 if __name__ == '__main__':
     setLogLevel('info')
@@ -100,8 +119,11 @@ if __name__ == '__main__':
     # Start the network
     net.start()
 
-    # Q1: Perform the latency and throughput measurements
-    measure_latency_and_throughput(net)
+    # Q1: Link Latency and Throughput
+    # measure_latency_and_throughput(net)
+
+    # Q2: Path Latency and Throughput
+    path_latency_and_throughput(net)
 
     # Drop to CLI for manual testing if needed
     CLI(net)

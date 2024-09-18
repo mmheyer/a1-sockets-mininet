@@ -1,8 +1,8 @@
-2)    Predicted throughput: 
-      Predicted latency:
-      Actual throughput:
-      Actual latency:
-      Explanation of results:
+2)    Predicted throughput: 18.796 Mbps
+      Predicted latency: 121.996 ms
+      Actual throughput: 18.471 Mbps
+      Actual latency: 120.745 ms
+      Explanation of results: The actual throughput and latency was close to my predictions. To predict latency, I added the rtt for each link on the path between h1 and h10. To predict throughput, I chose the minimum throughput for all the links on the path, because this link was the "bottleneck" for sending data.
 
 3.1)  Predicted throughput:
       Predicted latency:
