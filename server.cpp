@@ -35,11 +35,13 @@ int Server::handle_connection(int connectionfd) {
     }
 
     // (3) Send acknowledgment to client
+    //std::cout << "[DEBUG] Sending ACK to client.\n";
     if (send(connectionfd, RESPONSE_ACK, strlen(RESPONSE_ACK), 0) == -1) {
         perror("Error sending acknowledgment");
         close(connectionfd);
         return -1;
     }
+    //std::cout << "[DEBUG] Successfully sent ACK to client.\n";
 
     // (4) Calculate the time taken and the transfer rate
     clock_t end_time = clock();
@@ -64,11 +66,16 @@ int Server::run_server() {
     }
 
     // (2) Set the "reuse port" option
-    int yes = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
-        perror("Error setting socket options");
-        close(sock);
-        return -1;
+    // int yes = 1;
+    // if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
+    //     perror("Error setting socket options");
+    //     close(sock);
+    //     return -1;
+    // }
+    int opt = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        perror("setsockopt failed");
+        exit(EXIT_FAILURE);
     }
 
     // (3) Bind the socket to the port

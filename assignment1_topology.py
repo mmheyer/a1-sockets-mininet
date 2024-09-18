@@ -140,7 +140,6 @@ def three_pair_multiplexing(net):
     h9 = net.get('h9')
     h10 = net.get('h10')
 
-
     # Start the servers on h6, h9, and h10 in the background
     h6.cmd('stdbuf -oL ./iperfer -s -p 5001 > throughput_h6.txt 2>&1 &')
     h9.cmd('stdbuf -oL ./iperfer -s -p 5001 > throughput_h9.txt 2>&1 &')

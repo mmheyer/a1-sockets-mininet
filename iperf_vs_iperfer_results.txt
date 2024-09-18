@@ -1,0 +1,11 @@
+=== iPerf Test Result ===
+------------------------------------------------------------
+Client connecting to 10.0.0.6, TCP port 5001
+TCP window size: 85.3 KByte (default)
+------------------------------------------------------------
+[  1] local 10.0.0.1 port 46508 connected with 10.0.0.6 port 5001
+[ ID] Interval       Transfer     Bandwidth
+[  1] 0.0000-24.2210 sec  53.3 MBytes  18.4 Mbits/sec
+
+=== iperfer Test Result ===
+Sent=58731 KB, Rate=18.423 Mbps
