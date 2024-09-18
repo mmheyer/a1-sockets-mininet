@@ -124,7 +124,6 @@ def two_pair_multiplexing(net):
     h1.cmd('ping -c 20 10.0.0.6 > latency_h1_h6.txt &')
     h2.cmd('ping -c 20 10.0.0.9 > latency_h2_h9.txt &')
 
-
     # Run throughput tests (iPerfer) for both pairs simultaneously
     h1.cmd('stdbuf -oL ./iperfer -c -h 10.0.0.6 -p 5001 -t 20 > throughput_h1_h6.txt 2>&1 &')
     h2.cmd('stdbuf -oL ./iperfer -c -h 10.0.0.9 -p 5001 -t 20 > throughput_h2_h9.txt 2>&1 &')
@@ -152,7 +151,6 @@ def three_pair_multiplexing(net):
     h2.cmd('ping -c 20 10.0.0.9 > latency_h2_h9.txt &')
     h5.cmd('ping -c 20 10.0.0.10 > latency_h5_h10.txt &')
 
-
     # Run throughput tests (iPerfer) for both pairs simultaneously
     h1.cmd('stdbuf -oL ./iperfer -c -h 10.0.0.6 -p 5001 -t 20 > throughput_h1_h6.txt 2>&1 &')
     h2.cmd('stdbuf -oL ./iperfer -c -h 10.0.0.9 -p 5001 -t 20 > throughput_h2_h9.txt 2>&1 &')
@@ -160,6 +158,25 @@ def three_pair_multiplexing(net):
 
     # Wait for the tests to complete
     sleep(25)
+
+def effects_of_latency(net):
+    # Get the hosts
+    h1 = net.get('h1')
+    h3 = net.get('h3')
+    h10 = net.get('h10')
+    h8 = net.get('h8')
+
+    # Start the servers on h10 and h8 in the background
+    h10.cmd('stdbuf -oL ./iperfer -s -p 5001 > throughput_h10.txt 2>&1 &')
+    h8.cmd('stdbuf -oL ./iperfer -s -p 5001 > throughput_h8.txt 2>&1 &')
+
+    # Run latency tests (ping) between h1 -> h10 and h3 -> h8
+    h1.cmd('ping -c 20 10.0.0.10 > latency_h1-h10.txt &')
+    h3.cmd('ping -c 20 10.0.0.8 > latency_h3-h8.txt &')
+
+    # Run throughput tests (iPerfer) for both pairs simultaneously
+    h1.cmd('stdbuf -oL ./iperfer -c -h 10.0.0.10 -p 5001 -t 20 > throughput_h1-h10.txt 2>&1 &')
+    h3.cmd('stdbuf -oL ./iperfer -c -h 10.0.0.8 -p 5001 -t 20 > throughput_h3-h8.txt 2>&1 &')
 
 if __name__ == '__main__':
     setLogLevel('info')
@@ -179,7 +196,10 @@ if __name__ == '__main__':
 
     # Q3: Effects of Multiplexing
     # two_pair_multiplexing(net)
-    three_pair_multiplexing(net)
+    # three_pair_multiplexing(net)
+
+    # Q4: Effects of Latency
+    effects_of_latency(net)
 
     # Drop to CLI for manual testing if needed
     CLI(net)

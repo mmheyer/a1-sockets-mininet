@@ -24,8 +24,13 @@
                               I was surprised to see the latency decrease, despite adding an extra connection.
                               This could have happened by chance, but it is also possible that TCP's congestion control algorithms were able to more efficientkly balance three connections.
 
-4)    Predicted throughput:
-      Predicted latency:
-      Actual throughput:
-      Actual latency:
-      Explanation of results:
+4)    Predicted throughput:   h1<->h10=11.718 Mbps    h3<->h8=11.718 Mbps
+      Predicted latency:      h1<->h10=500 ms         h3<->h8=186.330 ms
+      Actual throughput:      h1<->h10=7.124 Mbps     h3<->h8=16.436 Mbps
+      Actual latency:         h1<->h10=634.010 ms     h3<->h8=543.508 ms
+      Explanation of results: While my predicted throughput wasn't too far off, I thought both paths would have the same throughput based on link 4.
+                              To calculate the throughput, I used my measurements from Q1 and divided the throughput by 2 for links that were crossed by both paths.
+                              I expected the latency for h1 to h10 to be similar to that between h1 to h6 with two connections (587.881), but a bit lower since it was not competing
+                              for bandwidth on L1 or L5. It actually was slightly higher, but my prediction was not too far off. I expected the latency between h3 and h8 to be
+                              far lower since data only needs to travel through 2 links, however it was similar to that of h1 and h10. This is likely due to network congestion.
+
