@@ -36,9 +36,8 @@ class AssignmentNetworks(Topo):
 
         # Add links between switches (forming a mesh-like topology)
         self.addLink(s1, s2, bw=20, delay='10ms')
-        self.addLink(s1, s3, bw=20, delay='10ms')
-        self.addLink(s2, s4, bw=20, delay='10ms')
-        self.addLink(s3, s5, bw=20, delay='10ms')
+        self.addLink(s2, s3, bw=20, delay='10ms')
+        self.addLink(s3, s4, bw=20, delay='10ms')
         self.addLink(s4, s5, bw=20, delay='10ms')
 
 if __name__ == '__main__':
