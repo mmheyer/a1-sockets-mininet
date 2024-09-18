@@ -1,6 +1,1 @@
-Starting client mode.
-Running in client mode
-Server hostname: 10.0.0.4
-Server port: 5001
-Time: 20 seconds
-Sent=20 KB, Rate=0.008 Mbps
+Sent=107885 KB, Rate=37.594 Mbps

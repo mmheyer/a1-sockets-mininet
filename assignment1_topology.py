@@ -74,7 +74,8 @@ def measure_latency_and_throughput(net):
         print(f"Measuring throughput on {link}...")
         
         # Start iPerfer server on destination host
-        h_dst.cmd(f'./iPerfer -s -p 5001 &')
+        h_dst.cmd(f'./iPerfer -s -p 5001 > throughput_server.txt 2>&1 &')
+        #h_dst.cmd(f'./iPerfer -s -p 5001 &')
         sleep(1)  # Wait for the server to start
 
         # print("Successfully started server!")

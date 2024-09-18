@@ -8,11 +8,24 @@
 #include <iostream>
 #include <cassert>
 #include <ctime>
+#include <iomanip>  // for std::put_time
 
 // Constant size for data chunks
 static const int CHUNK_SIZE = 1000;
 static const char FIN_MESSAGE[] = "FIN";
 static const char ACK_MESSAGE[] = "ACK";
+
+void printTime(const std::chrono::high_resolution_clock::time_point& time) {
+    // Convert high_resolution_clock::time_point to system_clock::time_point
+    auto system_time_point = std::chrono::time_point_cast<std::chrono::system_clock::duration>(time);
+    std::time_t time_t = std::chrono::system_clock::to_time_t(system_time_point);
+
+    // Convert time_t to local time
+    std::tm* local_tm = std::localtime(&time_t);
+
+    // Print the end time
+    std::cout << std::put_time(local_tm, "%Y-%m-%d %H:%M:%S") << std::endl;
+}
 
 // Constructor for the Client class
 Client::Client(const std::string& hostname, int port, int duration)
@@ -53,31 +66,24 @@ int Client::send_data() {
     auto start = std::chrono::high_resolution_clock::now();
 
     // Send data for the specified duration
-    //auto end_time = std::chrono::high_resolution_clock::now() + std::chrono::seconds(duration);
-    time_t start_time = time(nullptr);  // Get current time in seconds
-    // std::cout << "DEBUG: duration=" << duration << std::endl;
-    // assert(start_time < end_time);
-    while (difftime(time(nullptr), start_time) < duration) {
-        //time_t now = time(nullptr);  // Get current time
-        //double elapsed = difftime(now, start_time);  // Calculate elapsed time
+    auto start_time = std::chrono::high_resolution_clock::now();
+    auto end_time = start_time + std::chrono::seconds(duration);
+    //std::cout << "[DEBUG] start_time=";
+    //printTime(start_time);
+    //std::cout << "[DEBUG] end_time=";
+    //printTime(end_time);
 
-        // Print the elapsed time in seconds
-        //std::cout << "DEBUG: Elapsed time: " << elapsed << " seconds" << std::endl;
-
+    while (std::chrono::high_resolution_clock::now() < end_time) {
+        //std::cout << "[DEBUG] Current time: " << std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start_time).count() << " seconds" << std::endl;
         // Send 1000-byte chunks as fast as possible
         int bytes_sent = static_cast<int>(send(sock, data, CHUNK_SIZE, 0));
         if (bytes_sent == -1) {
-            std::cout << "Error: failed to send data.\n";
             perror("Error: failed to send data");
             close(sock);
             return -1;
         }
         total_bytes_sent += bytes_sent;
-        
-        // Sleep for a short duration to prevent busy-waiting
-        sleep(1);  // Sleep for 1 second between iterations
     }
-    //std::cout << "DEBUG: Finished timing loop." << std::endl;
 
     // (5) Send the FIN message and shutdown transmission
     //std::cout << "DEBUG: (5) Send the FIN message and shutdown transmission\n";
