@@ -1,20 +1,28 @@
-2)    Predicted throughput: 18.796 Mbps
-      Predicted latency: 121.996 ms
-      Actual throughput: 18.471 Mbps
-      Actual latency: 120.745 ms
-      Explanation of results: The actual throughput and latency was close to my predictions. To predict latency, I added the rtt for each link on the path between h1 and h10. To predict throughput, I chose the minimum throughput for all the links on the path, because this link was the "bottleneck" for sending data.
+2)    Predicted throughput:   18.796 Mbps
+      Predicted latency:      121.996 ms
+      Actual throughput:      18.471 Mbps
+      Actual latency:         120.745 ms
+      Explanation of results: The actual throughput and latency was close to my predictions. 
+                              To predict latency, I added the rtt for each link on the path between h1 and h10. 
+                              To predict throughput, I chose the minimum throughput for all the links on the path, because this link was the "bottleneck" for sending data.
 
-3.1)  Predicted throughput:
-      Predicted latency:
-      Actual throughput:
-      Actual latency:
-      Explanation of results:
+3.1)  Predicted throughput:   9.398 Mbps
+      Predicted latency:      121.996 ms
+      Actual throughput:      h1<->h6=9.617 Mbps      h2<->h9=9.251 Mbps
+      Actual latency:         h1<->h6=623.683 ms      h2<->h9=656.123 ms
+      Explanation of results: While my prediction for the throughput was close, I was off on my prediction for the latency.
+                              I made the throughput prediction by taking the throughput of the smallest link (18.796 Mbps) and dividing by the number of hosts (2).
+                              I thought the latency would be similar (or slightly larger) despite adding another connection, but it increased significantly. 
+                              This could be due to likely due to network congestion and contention for shared resources.
 
-3.2)  Predicted throughput:
-      Predicted latency:
-      Actual throughput:
-      Actual latency:
-      Explanation of results:
+3.2)  Predicted throughput:   6.265 Mbps
+      Predicted latency:      1000 ms
+      Actual throughput:      h1<->h6=7.227 Mbps    h2<->h9=5.730 Mbps    h5<->h10=6.126 Mbps
+      Actual latency:         h1<->h6=587.881 ms    h2<->h9=587.950 ms    h5<->h10=617.349 ms
+      Explanation of results: Again, my prediction for throughput was close but latency was off.
+                              I estimated throughput similar to in part 3.1, this time dividing the lowest throughput by 3 hosts.
+                              I was surprised to see the latency decrease, despite adding an extra connection.
+                              This could have happened by chance, but it is also possible that TCP's congestion control algorithms were able to more efficientkly balance three connections.
 
 4)    Predicted throughput:
       Predicted latency:
