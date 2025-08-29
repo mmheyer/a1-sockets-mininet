@@ -1,5 +1,6 @@
 {
     "files.associations": {
         "iomanip": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "/home/ubuntu/a1-sockets-mininet/cpp"
 }
