@@ -22,8 +22,8 @@ Client::Client(const std::string& hostname, int port, int duration)
 // Function to send data to the server
 int Client::send_data() {
     // (1) Create socket
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock == -1) {
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1) {
         spdlog::error("Error: failed to create socket");
         return -1;
     }
@@ -36,76 +36,85 @@ int Client::send_data() {
     }
 
     // (3) Connect to the server
-    if (connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
+    if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
         spdlog::error("Error: failed to connect to the server");
-        close(sock);
+        close(sockfd);
         return -1;
     }
 
-    // Send eight 1-byte packets to measure RTT, waiting for an ACK after each
-    const int RTT_PACKETS = 8;
-    char ping_data[1] = {'M'};
-    char ack_buf[1];
+    char send_byte = '\0';                     // 1-byte packet for RTT estimation
+    char ack_byte;                             // buffer for 1-byte ACK
+    const std::size_t CHUNK_SIZE = 80 * 1000;  // 80 KB
+    char data_buf[CHUNK_SIZE];
+    std::memset(data_buf, 0, CHUNK_SIZE);      // all zero bytes
+
+    // --- RTT ESTIMATION PHASE ---
     long long total_rtt = 0;
-    for (int i = 0; i < RTT_PACKETS; ++i) {
-        auto rtt_start = std::chrono::high_resolution_clock::now();
-        if (send(sock, ping_data, 1, 0) != 1) {
-            spdlog::error("Error: failed to send ping data");
-            close(sock);
+    int rtt_measurements = 0;
+    std::chrono::high_resolution_clock::time_point send_time;
+    std::chrono::high_resolution_clock::time_point recv_time;
+
+    for (int i = 0; i < 8; i++) {
+        // send 1-byte packet
+        send(sockfd, &send_byte, 1, 0);
+        send_time = std::chrono::high_resolution_clock::now();
+
+        // wait for 1-byte ACK
+        int bytes = recv(sockfd, &ack_byte, 1, 0);
+        if (bytes <= 0) {
+            spdlog::error("Server closed connection during RTT estimation.");
+            close(sockfd);
             return -1;
         }
-        if (recv(sock, ack_buf, 1, 0) != 1) {
-            spdlog::error("Error: failed to receive ACK");
-            close(sock);
-            return -1;
-        }
-        auto rtt_end = std::chrono::high_resolution_clock::now();
+        recv_time = std::chrono::high_resolution_clock::now();
+
+        // RTT measured only for the last 4 packets
         if (i >= 4) {
-            auto rtt = std::chrono::duration_cast<std::chrono::milliseconds>(rtt_end - rtt_start).count();
+            auto rtt = std::chrono::duration_cast<std::chrono::milliseconds>(recv_time - send_time).count();
             total_rtt += rtt;
+            rtt_measurements++;
         }
     }
-    spdlog::debug("Total RTT (last 4 packets): {} ms", total_rtt);
-    long long avg_rtt = total_rtt / 4;
-    spdlog::debug("Average RTT (last 4 packets): {} ms", avg_rtt);
 
-    // (4) Start sending data
-    char data[CHUNK_SIZE] = {};  // All zeroes
+    long long avg_rtt = (rtt_measurements > 0)
+                        ? total_rtt / rtt_measurements
+                        : 0;
+
+    // --- DATA TRANSFER PHASE ---
     long long total_bytes_sent = 0;
+    auto transfer_start = std::chrono::high_resolution_clock::now();
 
-    // Send data for the specified duration
-    auto start_time = std::chrono::high_resolution_clock::now();
-    auto end_time = start_time + std::chrono::seconds(duration);
+    while (true) {
+        auto now = std::chrono::high_resolution_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - transfer_start).count();
+        if (elapsed >= duration) break;
 
-    while (std::chrono::high_resolution_clock::now() < end_time) {
-        // Send 80 KB chunks as fast as possible
-        long long bytes_sent = static_cast<long long>(send(sock, data, CHUNK_SIZE, 0));
-        if (bytes_sent == -1) {
-            spdlog::error("Error: failed to send data");
-            close(sock);
-            return -1;
-        }
-        total_bytes_sent += bytes_sent;
+        // send 80KB data chunk
+        int sent = ::send(sockfd, data_buf, CHUNK_SIZE, 0);
+        if (sent <= 0) break;
+        total_bytes_sent += sent;
 
-        // Wait for ACK from server
-        if (recv(sock, ack_buf, 1, 0) != 1) {
-            spdlog::error("Error: failed to receive ACK");
-            close(sock);
-            return -1;
+        // wait for 1-byte ACK before sending next chunk
+        int bytes = recv(sockfd, &ack_byte, 1, 0);
+        if (bytes <= 0) {
+            spdlog::error("Server closed connection during data transfer.");
+            break;
         }
     }
 
-    // (7) Calculate the elapsed time
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = end - start_time;
+    auto transfer_end = std::chrono::high_resolution_clock::now();
+    double transfer_time_s = std::chrono::duration_cast<std::chrono::microseconds>(transfer_end - transfer_start).count() / 1e6;
 
-    // (8) Print summary in the format: Sent=X KB, Rate=Y Mbps
-    long long kb_sent = total_bytes_sent / 1000;
-    double rate_mbps = (static_cast<double>(total_bytes_sent) * 8) / (1000000.0 * elapsed.count());
+    // --- METRICS CALCULATION ---
+    long long total_kb_sent = total_bytes_sent / 1000;
+    double rate_mbps = (total_bytes_sent * 8.0) / (transfer_time_s * 1e6); 
+    // bytes → bits (×8), divide by seconds, then divide by 1e6 to get Mbps
 
-    printf("Sent=%lld KB, Rate=%.3f Mbps, RTT=%lldms\n", kb_sent, rate_mbps, avg_rtt);
+    // --- FINAL OUTPUT ---
+    spdlog::info("Sent={} KB, Rate={:.3f} Mbps, RTT={}ms",
+                 total_kb_sent, rate_mbps, avg_rtt);
 
     // (9) Close the socket
-    close(sock);
+    close(sockfd);
     return 0;
 }

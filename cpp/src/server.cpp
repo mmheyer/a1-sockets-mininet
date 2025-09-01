@@ -11,73 +11,70 @@
 #include <chrono>        // for time measurement
 #include "spdlog/spdlog.h"
 
-static const int MAX_MESSAGE_SIZE = 256;
-static const int DATA_CHUNK_SIZE = 80000;  // 80 KB per chunk
-// static const char *RESPONSE_ACK = "ACK";
-static const int NUM_PACKETS = 8;
-static const char EXPECTED_CHAR = 'M';
-static const char ACK_CHAR = 'A';
-static char recv_buf[1];
-static char ack_buf[1] = {ACK_CHAR};
-
 int Server::handle_connection(int connectionfd) {
-    std::chrono::high_resolution_clock::time_point send_time;
-    std::chrono::high_resolution_clock::time_point recv_time;
-    long long total_rtt = 0.0;
+    char recv_buf[1024];
+    char ack = 'A';  // single-byte ACK
+    const int SMALL_PKTS = 8;
+    long long total_rtt = 0;
+    int rtt_measurements = 0;
 
-    // For each packet, send ACK and measure RTT on next packet
-    for (int i = 0; i < NUM_PACKETS; ++i) {
-        // receive packet from the client
-        if (recv(connectionfd, recv_buf, 1, 0) != 1) {
+    std::chrono::high_resolution_clock::time_point send_time, recv_time;
+
+    // --- First phase: 8 small packets ---
+    for (int i = 0; i < SMALL_PKTS; i++) {
+        // Receive 1-byte packet
+        int bytes = recv(connectionfd, recv_buf, 1, 0);
+        if (bytes <= 0) {
+            spdlog::error("Client disconnected early\n");
+            close(connectionfd);
             return -1;
         }
-        if (recv_buf[0] != EXPECTED_CHAR) {
-            return -1;
-        }
-        recv_time = std::chrono::high_resolution_clock::now();
 
-        // compute RTT for packets 4-8
+        // for the last 4 packets, measure RTT
         if (i >= 4) {
-            auto rtt = std::chrono::duration_cast<std::chrono::milliseconds>(recv_time - send_time).count();
-            spdlog::debug("rtt for packet {}: {} ms", i + 1, rtt);
+            recv_time = std::chrono::high_resolution_clock::now();
+            auto rtt = duration_cast<std::chrono::microseconds>(recv_time - send_time).count();
             total_rtt += rtt;
+            rtt_measurements++;
+            spdlog::debug("RTT measurement {}: {} us", rtt_measurements, rtt);
         }
-        
-        // Send ACK to client
-        send_time = std::chrono::high_resolution_clock::now();
-        if (send(connectionfd, ack_buf, 1, 0) != 1) {
-            return -1;
-        }
+
+        // Send ACK for this packet
+        send(connectionfd, &ack, 1, 0);
+        send_time = std::chrono::high_resolution_clock::now();  // mark send time for next RTT
     }
 
     // Compute average RTT
-    spdlog::debug("Total RTT for packets 4-8: {}", total_rtt);
-    long long avg_rtt = total_rtt / 4;
+    // double avg_rtt = static_cast<double>(total_rtt) / rtt_measurements;
+    long long avg_rtt = total_rtt / rtt_measurements / 1000; // convert to ms
+    spdlog::debug("Average RTT (server-side, 4 measurements): {} us\n", avg_rtt);
 
-    char buffer[DATA_CHUNK_SIZE] = {};
-    long long total_bytes_received = 0;
-    auto start_time = std::chrono::high_resolution_clock::now();
-    long long bytes_received;
+    // --- Second phase: large 80KB packets ---
+    // const size_t LARGE_PKT_SIZE = 80 * 1024;
+    const size_t LARGE_PKT_SIZE = 80 * 1000;
+    char large_buf[LARGE_PKT_SIZE];
 
-    // (1) Receive data in chunks of 80 KB
-    while ((bytes_received = static_cast<long long>(recv(connectionfd, buffer, DATA_CHUNK_SIZE, 0))) > 0) {
-        total_bytes_received += bytes_received;
-        
-        // send ACK for every packet received
-        if (send(connectionfd, ack_buf, 1, 0) != 1) {
-            spdlog::error("Error sending ACK to client");
-            return -1;
+    std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
+    long long total_bytes = 0;
+    while (true) {
+        int bytes = recv(connectionfd, large_buf, LARGE_PKT_SIZE, 0);
+        if (bytes <= 0) {
+            spdlog::debug("No more data from client. Closing connection.\n");
+            break;
         }
-    }
+        total_bytes += bytes;
 
-    // (4) Calculate the time taken and the transfer rate
-    auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> time_elapsed = end_time - start_time;
-    double rate_mbps = (static_cast<double>(total_bytes_received) * 8.0) / (time_elapsed.count() * 1000000.0); // bits per second to Mbps
-    long long total_kb = total_bytes_received / 1000;
+        // ACK each large packet (1 byte is enough)
+        send(connectionfd, &ack, 1, 0);
+        // spdlog::debug("Received large packet of {} bytes\n", bytes);
+    }
+    std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end_time - start_time;
+    double rate_mbps = (static_cast<double>(total_bytes) * 8.0) / (elapsed.count() * 1000000.0); // bits per second to Mbps
+    long long total_kb = total_bytes / 1000;
 
     // (5) Print the summary
-    printf("Received=%lld KB, Rate=%.3f Mbps, RTT=%lldms\n", total_kb, rate_mbps, avg_rtt);
+    spdlog::info("Received={} KB, Rate={:.3f} Mbps, RTT={}ms\n", total_kb, rate_mbps, avg_rtt);
 
     // (6) Close the connection
     close(connectionfd);
