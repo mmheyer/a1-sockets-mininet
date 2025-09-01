@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.10)
 PROJECT(EECS489A1)
 SET(CMAKE_CXX_STANDARD 23)
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+# Put all executables in build/bin
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include(FetchContent)
 
