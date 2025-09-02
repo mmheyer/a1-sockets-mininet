@@ -69,6 +69,8 @@ int Server::handle_connection(int connectionfd) {
         // spdlog::debug("Received large packet of {} bytes\n", bytes);
     }
     std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
+
+    // (4) Calculate metrics
     std::chrono::duration<double> elapsed = end_time - start_time;
     double rate_mbps = (static_cast<double>(total_bytes) * 8.0) / (elapsed.count() * 1000000.0); // bits per second to Mbps
     long long total_kb = total_bytes / 1000;

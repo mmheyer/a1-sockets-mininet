@@ -82,15 +82,12 @@ int Client::send_data() {
 
     // --- DATA TRANSFER PHASE ---
     long long total_bytes_sent = 0;
-    auto transfer_start = std::chrono::high_resolution_clock::now();
+    auto start_time = std::chrono::high_resolution_clock::now();
+    auto end_time = start_time + std::chrono::seconds(duration);
 
-    while (true) {
-        auto now = std::chrono::high_resolution_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - transfer_start).count();
-        if (elapsed >= duration) break;
-
+    while (std::chrono::high_resolution_clock::now() < end_time) {
         // send 80KB data chunk
-        int sent = ::send(sockfd, data_buf, CHUNK_SIZE, 0);
+        int sent = send(sockfd, data_buf, CHUNK_SIZE, 0);
         if (sent <= 0) break;
         total_bytes_sent += sent;
 
@@ -103,7 +100,7 @@ int Client::send_data() {
     }
 
     auto transfer_end = std::chrono::high_resolution_clock::now();
-    double transfer_time_s = std::chrono::duration_cast<std::chrono::microseconds>(transfer_end - transfer_start).count() / 1e6;
+    double transfer_time_s = std::chrono::duration_cast<std::chrono::microseconds>(transfer_end - start_time).count() / 1e6;
 
     // --- METRICS CALCULATION ---
     long long total_kb_sent = total_bytes_sent / 1000;
