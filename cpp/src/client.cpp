@@ -86,10 +86,18 @@ int Client::send_data() {
     auto end_time = start_time + std::chrono::seconds(duration);
 
     while (std::chrono::high_resolution_clock::now() < end_time) {
-        // send 80KB data chunk
-        int sent = send(sockfd, data_buf, CHUNK_SIZE, 0);
-        if (sent <= 0) break;
-        total_bytes_sent += sent;
+        int bytes_sent = 0;
+        while (bytes_sent < CHUNK_SIZE) {
+            // send 80KB data chunk
+            int sent = send(sockfd, data_buf, CHUNK_SIZE, 0);
+            if (sent <= 0) {
+                spdlog::error("Error sending data to server.");
+                close(sockfd);
+                return -1;
+            }
+            bytes_sent += sent;
+        }
+        total_bytes_sent += bytes_sent;
 
         // wait for 1-byte ACK before sending next chunk
         int bytes = recv(sockfd, &ack_byte, 1, 0);
