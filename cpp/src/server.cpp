@@ -54,25 +54,42 @@ int Server::handle_connection(int connectionfd) {
     const size_t LARGE_PKT_SIZE = 80 * 1000;
     char large_buf[LARGE_PKT_SIZE];
 
-    std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
+    // std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
     long long total_bytes = 0;
+    std::chrono::duration<double> elapsed;
+    int num_acks = 0;
     while (true) {
-        int bytes = recv(connectionfd, large_buf, LARGE_PKT_SIZE, 0);
-        if (bytes <= 0) {
-            spdlog::debug("No more data from client. Closing connection.\n");
-            break;
+        int bytes_received = 0;
+        std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
+        while (bytes_received < LARGE_PKT_SIZE) {
+            // Receive 80KB data chunk
+            int bytes = recv(connectionfd, large_buf + bytes_received, LARGE_PKT_SIZE - bytes_received, 0);
+            if (bytes <= 0) {
+                spdlog::debug("No more data from client. Closing connection.\n");
+                break;
+            }
+            bytes_received += bytes;
         }
-        total_bytes += bytes;
+
+        if (bytes_received == 0) {
+            spdlog::debug("No bytes received, ending data transfer loop.\n");
+            break; // no more data from client
+        }
+        std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
+        elapsed += end_time - start_time;
+        total_bytes += bytes_received;
 
         // ACK each large packet (1 byte is enough)
         send(connectionfd, &ack, 1, 0);
+        num_acks++;
         // spdlog::debug("Received large packet of {} bytes\n", bytes);
     }
-    std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
+    // std::chrono::high_resolution_clock::time_point end_time = std::chrono::high_resolution_clock::now();
 
     // (4) Calculate metrics
-    std::chrono::duration<double> elapsed = end_time - start_time;
-    double rate_mbps = (static_cast<double>(total_bytes) * 8.0) / (elapsed.count() * 1000000.0); // bits per second to Mbps
+    // std::chrono::duration<double> elapsed = end_time - start_time;
+    std::chrono::duration<double> transmission_delay = elapsed - std::chrono::duration<double>(num_acks * avg_rtt / 1000.0); // avg_rtt is in ms, convert to seconds
+    double rate_mbps = (static_cast<double>(total_bytes) * 8.0) / (transmission_delay.count() * 1000000.0); // bits per second to Mbps
     long long total_kb = total_bytes / 1000;
 
     // (5) Print the summary

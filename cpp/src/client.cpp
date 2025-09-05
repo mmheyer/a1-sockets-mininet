@@ -46,7 +46,7 @@ int Client::send_data() {
     char ack_byte;                             // buffer for 1-byte ACK
     const std::size_t CHUNK_SIZE = 80 * 1000;  // 80 KB
     char data_buf[CHUNK_SIZE];
-    std::memset(data_buf, 0, CHUNK_SIZE);      // all zero bytes
+    std::memset(data_buf, send_byte, CHUNK_SIZE);      // all zero bytes
 
     // --- RTT ESTIMATION PHASE ---
     long long total_rtt = 0;
@@ -85,11 +85,13 @@ int Client::send_data() {
     auto start_time = std::chrono::high_resolution_clock::now();
     auto end_time = start_time + std::chrono::seconds(duration);
 
+    int num_acks = 0;
     while (std::chrono::high_resolution_clock::now() < end_time) {
+        auto start_time = std::chrono::high_resolution_clock::now();
         int bytes_sent = 0;
         while (bytes_sent < CHUNK_SIZE) {
             // send 80KB data chunk
-            int sent = send(sockfd, data_buf, CHUNK_SIZE, 0);
+            int sent = send(sockfd, data_buf + bytes_sent, CHUNK_SIZE - bytes_sent, 0);
             if (sent <= 0) {
                 spdlog::error("Error sending data to server.");
                 close(sockfd);
@@ -101,23 +103,25 @@ int Client::send_data() {
 
         // wait for 1-byte ACK before sending next chunk
         int bytes = recv(sockfd, &ack_byte, 1, 0);
+        num_acks++;
         if (bytes <= 0) {
             spdlog::error("Server closed connection during data transfer.");
             break;
         }
     }
 
-    auto transfer_end = std::chrono::high_resolution_clock::now();
-    double transfer_time_s = std::chrono::duration_cast<std::chrono::microseconds>(transfer_end - start_time).count() / 1e6;
-
     // --- METRICS CALCULATION ---
-    long long total_kb_sent = total_bytes_sent / 1000;
-    double rate_mbps = (total_bytes_sent * 8.0) / (transfer_time_s * 1e6); 
-    // bytes → bits (×8), divide by seconds, then divide by 1e6 to get Mbps
+    auto transfer_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = transfer_end - start_time;
+    spdlog::debug("Data transfer time: {:.6f} seconds", elapsed.count());
+    std::chrono::duration<double> transmission_delay = elapsed - std::chrono::duration<double>(num_acks * avg_rtt / 1000.0); // avg_rtt is in ms, convert to seconds
+    spdlog::debug("Transmission delay (excluding RTT): {:.6f} seconds", transmission_delay.count());
+    long long kb_sent = total_bytes_sent / 1000;
+    double rate_mbps = (static_cast<double>(total_bytes_sent) * 8) / (1000000.0 * transmission_delay.count());
 
     // --- FINAL OUTPUT ---
     spdlog::info("Sent={} KB, Rate={:.3f} Mbps, RTT={}ms",
-                 total_kb_sent, rate_mbps, avg_rtt);
+                 kb_sent, rate_mbps, avg_rtt);
 
     // (9) Close the socket
     close(sockfd);
