@@ -59,18 +59,13 @@ int Server::handle_connection(int connectionfd) {
     std::chrono::duration<double> elapsed;
     int num_acks = 0;
     while (true) {
-        int bytes_received = 0;
         std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
-        while (bytes_received < LARGE_PKT_SIZE) {
-            // Receive 80KB data chunk
-            int bytes = recv(connectionfd, large_buf + bytes_received, LARGE_PKT_SIZE - bytes_received, 0);
-            if (bytes <= 0) {
-                spdlog::debug("No more data from client. Closing connection.\n");
-                break;
-            }
-            bytes_received += bytes;
+        int bytes_received = recv(connectionfd, large_buf, LARGE_PKT_SIZE, MSG_WAITALL);
+        if (bytes_received < 0) {
+            spdlog::error("Error receiving data from client\n");
+            close(connectionfd);
+            return -1;
         }
-
         if (bytes_received == 0) {
             spdlog::debug("No bytes received, ending data transfer loop.\n");
             break; // no more data from client
